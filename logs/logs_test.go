@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	. "github.com/etix/mirrorbits/config"
 	"github.com/etix/mirrorbits/core"
 	"github.com/etix/mirrorbits/filesystem"
 	"github.com/etix/mirrorbits/mirrors"
@@ -362,4 +363,47 @@ func TestLogDownload(t *testing.T) {
 	}
 
 	buf.Reset()
+}
+
+func TestConfiguredLogLevel(t *testing.T) {
+	debug := core.Debug
+	runLog := core.RunLog
+	defer func() {
+		core.Debug = debug
+		core.RunLog = runLog
+		SetConfiguration(nil)
+	}()
+
+	core.Debug = false
+	core.RunLog = ""
+	SetConfiguration(nil)
+
+	if configuredLogLevel() != logging.INFO {
+		t.Fatalf("Log level is supposed to be INFO without configuration")
+	}
+
+	SetConfiguration(&Configuration{LogLevel: "warning"})
+	rlogger.f = nil
+	ReloadRuntimeLogs()
+
+	if logging.GetLevel("main") != logging.WARNING {
+		t.Fatalf("Log level is supposed to be WARNING, got %s", logging.GetLevel("main"))
+	}
+
+	// The level must also be applied when the logger is not reopened
+	SetConfiguration(&Configuration{LogLevel: "ERROR"})
+	ReloadRuntimeLogs()
+
+	if logging.GetLevel("main") != logging.ERROR {
+		t.Fatalf("Log level is supposed to be ERROR, got %s", logging.GetLevel("main"))
+	}
+
+	core.Debug = true
+	ReloadRuntimeLogs()
+	rlogger.f = nil
+	ReloadRuntimeLogs()
+
+	if logging.GetLevel("main") != logging.DEBUG {
+		t.Fatalf("The -debug flag must take precedence over LogLevel")
+	}
 }

@@ -43,6 +43,7 @@ func defaultConfig() Configuration {
 		RedisPassword:          "",
 		RedisDB:                0,
 		LogDir:                 "",
+		LogLevel:               "INFO",
 		TraceFileLocation:      "",
 		GeoipDatabasePath:      "/usr/share/GeoIP/",
 		GeographicalSort:       true,
@@ -79,6 +80,7 @@ type Configuration struct {
 	RedisPassword           string     `yaml:"RedisPassword"`
 	RedisDB                 int        `yaml:"RedisDB"`
 	LogDir                  string     `yaml:"LogDir"`
+	LogLevel                string     `yaml:"LogLevel"`
 	TraceFileLocation       string     `yaml:"TraceFileLocation"`
 	GeoipDatabasePath       string     `yaml:"GeoipDatabasePath"`
 	GeographicalSort        bool       `yaml:"GeographicalSort"`
@@ -167,6 +169,9 @@ func ReloadConfig() error {
 	if !utils.IsInSlice(c.OutputMode, []string{"auto", "json", "redirect"}) {
 		return fmt.Errorf("Config: outputMode can only be set to 'auto', 'json' or 'redirect'")
 	}
+	if _, err := logging.LogLevel(c.LogLevel); err != nil {
+		return fmt.Errorf("Config: LogLevel can only be set to 'CRITICAL', 'ERROR', 'WARNING', 'NOTICE', 'INFO' or 'DEBUG'")
+	}
 	if c.Repository == "" {
 		return fmt.Errorf("Path to local repository not configured (see mirrorbits.conf)")
 	}
@@ -219,6 +224,14 @@ func GetConfig() *Configuration {
 	}
 
 	return config
+}
+
+// IsConfigLoaded returns true once a configuration has been loaded
+func IsConfigLoaded() bool {
+	configMutex.RLock()
+	defer configMutex.RUnlock()
+
+	return config != nil
 }
 
 // SetConfiguration is only used for testing purpose

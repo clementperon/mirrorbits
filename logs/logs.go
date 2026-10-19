@@ -65,7 +65,11 @@ func isTerminal(f *os.File) bool {
 func ReloadRuntimeLogs() {
 	if rlogger.f == os.Stderr && core.RunLog == "" {
 		// Logger already set up and connected to the console.
-		// Don't reload to avoid breaking journald.
+		// Don't reload to avoid breaking journald, but apply
+		// the log level in case it changed.
+		if !core.Debug {
+			logging.SetLevel(configuredLogLevel(), "main")
+		}
 		return
 	}
 
@@ -94,8 +98,21 @@ func ReloadRuntimeLogs() {
 		logging.SetLevel(logging.DEBUG, "main")
 	} else {
 		logging.SetFormatter(logging.MustStringFormatter("%{time:2006/01/02 15:04:05.000 MST} %{message}"))
-		logging.SetLevel(logging.INFO, "main")
+		logging.SetLevel(configuredLogLevel(), "main")
 	}
+}
+
+// configuredLogLevel returns the log level set in the configuration,
+// or INFO if no configuration is loaded yet
+func configuredLogLevel() logging.Level {
+	if !IsConfigLoaded() {
+		return logging.INFO
+	}
+	level, err := logging.LogLevel(GetConfig().LogLevel)
+	if err != nil {
+		return logging.INFO
+	}
+	return level
 }
 
 func openLogFile(logfile string) (*os.File, bool, error) {
